@@ -1,0 +1,67 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+.env/
+.envrc
+
+# =========================
+# OS / Editors
+# =========================
+.DS_Store
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# =========================
+# Raw OSM data
+# =========================
+data/raw/*.osm.pbf
+data/raw/*.pbf
+data/raw/*.osm
+data/raw/*.bz2
+data/raw/*.gz
+
+# Keep processed CSV and sample data tracked
+!data/processed/
+!data/processed/**
+!data/sample/
+!data/sample/**
+
+# =========================
+# Build files (C)
+# =========================
+*.o
+*.out
+*.exe
+build/
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# Benchmark results (generated)
+# =========================
+results/csv/*
+results/figures/*
+
+# Keep folder structure if needed
+!results/csv/.gitkeep
+!results/figures/.gitkeep
+
+
+# large processed real dataset
+data/processed/nodes.csv
+data/processed/edges.csv
+
+!data/sample/
+!data/sample/**
