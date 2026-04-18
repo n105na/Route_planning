@@ -5,6 +5,7 @@
  * Point d'entrée principal pour tester le chargement du graphe.
  */
 int main() {
+    // Chemins vers les fichiers de test (jeu de données réduit)
     const char* nodes_path = "data/sample/nodes.csv";
     const char* edges_path = "data/sample/edges.csv";
 
