@@ -6,8 +6,8 @@
  */
 int main() {
     // Chemins vers les fichiers de test (jeu de données réduit)
-    const char* nodes_path = "data/sample/nodes.csv";
-    const char* edges_path = "data/sample/edges.csv";
+    const char* nodes_path = "data/sample/nodes_small.csv";
+    const char* edges_path = "data/sample/edges_small.csv";
 
     printf("Chargement du graphe de test...\n");
     
