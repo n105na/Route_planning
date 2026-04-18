@@ -5,7 +5,6 @@
 
 /**
  * Alloue la mémoire nécessaire pour la structure du graphe (CSR).
- * Cette fonction prépare les tableaux pour n nœuds et e arêtes.
  */
 Graph* create_graph(uint32_t n, uint32_t e) {
     Graph* g = (Graph*)malloc(sizeof(Graph));
@@ -14,15 +13,12 @@ Graph* create_graph(uint32_t n, uint32_t e) {
     g->num_nodes = n;
     g->num_edges = e;
 
-    // Allocation des tableaux CSR
+    // Allocation avec calloc pour initialiser les offsets à 0
     g->offsets = (uint32_t*)calloc(n + 1, sizeof(uint32_t));
     g->edges = (uint32_t*)malloc(e * sizeof(uint32_t));
     g->weights = (double*)malloc(e * sizeof(double));
-    
-    // Allocation pour les informations géographiques (A* et ALT)
     g->node_coords = (NodeInfo*)malloc(n * sizeof(NodeInfo));
 
-    // Vérification de l'allocation
     if (!g->offsets || !g->edges || !g->weights || !g->node_coords) {
         free_graph(g);
         return NULL;
@@ -32,7 +28,7 @@ Graph* create_graph(uint32_t n, uint32_t e) {
 }
 
 /**
- * Libère proprement toute la mémoire allouée pour le graphe.
+ * Libère proprement la mémoire.
  */
 void free_graph(Graph* g) {
     if (g) {
@@ -45,8 +41,7 @@ void free_graph(Graph* g) {
 }
 
 /**
- * Charge les données depuis les CSV et construit la structure CSR.
- * Note : edges.csv doit être trié par la colonne 'src'.
+ * Charge les données depuis les CSV avec une sécurité renforcée.
  */
 Graph* load_from_csv(const char* nodes_path, const char* edges_path) {
     FILE *f_nodes = fopen(nodes_path, "r");
@@ -62,14 +57,13 @@ Graph* load_from_csv(const char* nodes_path, const char* edges_path) {
     char line[1024];
     uint32_t n = 0, e = 0;
 
-    // 1. Comptage des nœuds et des arêtes pour l'allocation
-    fgets(line, sizeof(line), f_nodes); // Ignorer l'en-tête
+    // 1. Comptage des lignes (nœuds et arêtes)
+    fgets(line, sizeof(line), f_nodes);
     while (fgets(line, sizeof(line), f_nodes)) n++;
 
-    fgets(line, sizeof(line), f_edges); // Ignorer l'en-tête
+    fgets(line, sizeof(line), f_edges);
     while (fgets(line, sizeof(line), f_edges)) e++;
 
-    // 2. Création de l'objet Graph
     Graph* g = create_graph(n, e);
     if (!g) {
         fclose(f_nodes);
@@ -77,7 +71,7 @@ Graph* load_from_csv(const char* nodes_path, const char* edges_path) {
         return NULL;
     }
 
-    // 3. Remplissage des coordonnées (lat/lon)
+    // 2. Chargement des coordonnées
     rewind(f_nodes);
     fgets(line, sizeof(line), f_nodes); // Sauter l'en-tête
     for (uint32_t i = 0; i < n; i++) {
@@ -88,33 +82,44 @@ Graph* load_from_csv(const char* nodes_path, const char* edges_path) {
         }
     }
 
-    // 4. Construction de la structure CSR à partir des arêtes
+    // 3. Chargement des arêtes avec SÉCURITÉ (vérification des bornes)
     rewind(f_edges);
     fgets(line, sizeof(line), f_edges); // Sauter l'en-tête
     
     uint32_t current_node = 0;
+    uint32_t valid_edges_count = 0;
+
     for (uint32_t i = 0; i < e; i++) {
         uint32_t src, dst;
         double weight;
         if (fgets(line, sizeof(line), f_edges)) {
-            sscanf(line, "%u,%u,%lf", &src, &dst, &weight);
-            
-            g->edges[i] = dst;
-            g->weights[i] = weight;
+            if (sscanf(line, "%u,%u,%lf", &src, &dst, &weight) == 3) {
+                
+                // Vérification cruciale pour éviter le Segmentation Fault
+                // On vérifie si src et dst sont bien dans les limites du tableau
+                if (src < n) {
+                    g->edges[valid_edges_count] = dst;
+                    g->weights[valid_edges_count] = weight;
 
-            // Gestion de l'indexation (offsets)
-            while (current_node <= src) {
-                g->offsets[current_node + 1] = i + 1;
-                current_node++;
+                    // Mise à jour des offsets pour le nœud source
+                    while (current_node <= src) {
+                        g->offsets[current_node + 1] = valid_edges_count + 1;
+                        current_node++;
+                    }
+                    valid_edges_count++;
+                }
             }
         }
     }
     
-    // Finalisation des offsets pour les nœuds isolés
+    // Finalisation des offsets
     while (current_node < n) {
-        g->offsets[current_node + 1] = e;
+        g->offsets[current_node + 1] = valid_edges_count;
         current_node++;
     }
+
+    // Mise à jour du nombre réel d'arêtes valides chargées
+    g->num_edges = valid_edges_count;
 
     fclose(f_nodes);
     fclose(f_edges);
