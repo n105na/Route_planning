@@ -22,6 +22,7 @@ def haversine_m(lat1, lon1, lat2, lon2):
     a = math.sin(dphi / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
     return 2 * R * math.asin(math.sqrt(a))
 
+
 class RoadCollector(osmium.SimpleHandler):
     def __init__(self):
         super().__init__()
@@ -48,9 +49,13 @@ class RoadCollector(osmium.SimpleHandler):
         for ref in refs:
             self.used_nodes.add(ref)
 
+
+# 🔹 Parse OSM
 handler = RoadCollector()
 handler.apply_file(INPUT_FILE, locations=True)
 
+
+# 🔹 Map OSM IDs → internal IDs
 osm_to_internal = {}
 nodes_out = []
 
@@ -62,6 +67,8 @@ for osm_id in sorted(handler.used_nodes):
     lat, lon = handler.node_coords[osm_id]
     nodes_out.append((internal_id, osm_id, lat, lon))
 
+
+# 🔹 Build edges
 edges_out = []
 
 for refs, oneway in handler.ways:
@@ -72,22 +79,33 @@ for refs, oneway in handler.ways:
     for a, b in zip(filtered, filtered[1:]):
         src = osm_to_internal[a]
         dst = osm_to_internal[b]
+
         lat1, lon1 = handler.node_coords[a]
         lat2, lon2 = handler.node_coords[b]
+
         w = haversine_m(lat1, lon1, lat2, lon2)
 
         edges_out.append((src, dst, w))
         if not oneway:
             edges_out.append((dst, src, w))
 
+
+# 🔥 VERY IMPORTANT FOR CSR
+edges_out.sort(key=lambda x: x[0])
+
+
+# 🔹 Save nodes
 with open(NODES_CSV, "w", newline="", encoding="utf-8") as f:
     writer = csv.writer(f)
     writer.writerow(["node_id", "osm_id", "lat", "lon"])
     writer.writerows(nodes_out)
 
+
+# 🔹 Save edges
 with open(EDGES_CSV, "w", newline="", encoding="utf-8") as f:
     writer = csv.writer(f)
     writer.writerow(["src", "dst", "weight"])
     writer.writerows(edges_out)
+
 
 print(f"Done. nodes={len(nodes_out)}, edges={len(edges_out)}")

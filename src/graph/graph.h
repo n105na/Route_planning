@@ -19,16 +19,45 @@ typedef struct {
     uint32_t num_edges;   // Nombre total d'arêtes (E)
 
     // Structure CSR
-    uint32_t* offsets;    // Tableau d'indexation des voisins (taille: num_nodes + 1)
-    uint32_t* edges;      // Tableau des nœuds destinataires (taille: num_edges)
-    double* weights;      // Tableau des distances/poids (taille: num_edges)
+    uint32_t* offsets;    // Taille: num_nodes + 1
+    uint32_t* edges;      // Taille: num_edges
+    double* weights;      // Taille: num_edges
 
-    NodeInfo* node_coords; // Tableau des coordonnées GPS de chaque nœud
+    // Coordonnées géographiques (pour A*)
+    NodeInfo* node_coords; // Taille: num_nodes
+
 } Graph;
 
-// Fonctions de gestion du graphe
+/**
+ * Création d'un graphe vide avec allocation mémoire.
+ */
 Graph* create_graph(uint32_t n, uint32_t e);
+
+/**
+ * Libération de toute la mémoire du graphe.
+ */
 void free_graph(Graph* g);
+
+/**
+ * Chargement du graphe depuis des fichiers CSV.
+ * nodes_path : fichier des nœuds (id, lat, lon)
+ * edges_path : fichier des arêtes (src, dst, weight)
+ */
 Graph* load_from_csv(const char* nodes_path, const char* edges_path);
+
+/**
+ * Retourne le nombre de voisins d'un nœud u.
+ */
+uint32_t get_degree(const Graph* g, uint32_t u);
+
+/**
+ * Retourne l'indice de début des voisins dans edges[].
+ */
+uint32_t get_offset_start(const Graph* g, uint32_t u);
+
+/**
+ * Retourne l'indice de fin des voisins dans edges[].
+ */
+uint32_t get_offset_end(const Graph* g, uint32_t u);
 
 #endif
