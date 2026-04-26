@@ -1,4 +1,5 @@
 import csv
+from collections import deque
 
 INPUT_NODES = "data/processed/nodes.csv"
 INPUT_EDGES = "data/processed/edges.csv"
@@ -6,80 +7,102 @@ INPUT_EDGES = "data/processed/edges.csv"
 OUTPUT_NODES = "data/sample/nodes_small.csv"
 OUTPUT_EDGES = "data/sample/edges_small.csv"
 
-MAX_EDGES = 5000  # adjust if needed
+MAX_NODES = 100000
 
 
-# 🔹 Step 1: read first N edges (already valid graph)
-edges_raw = []
+# 🔹 Load edges into adjacency list
+adj = {}
 
 with open(INPUT_EDGES, newline='', encoding="utf-8") as f:
     reader = csv.DictReader(f)
-    for i, row in enumerate(reader):
-        if i >= MAX_EDGES:
+    for row in reader:
+        u = int(row["src"])
+        v = int(row["dst"])
+        w = float(row["weight"])
+
+        if u not in adj:
+            adj[u] = []
+
+        adj[u].append((v, w))
+
+
+# 🔹 BFS to keep graph connected
+visited = set()
+queue = deque([0])   # start from node 0
+
+edges = []
+nodes_set = set([0])
+
+while queue and len(nodes_set) < MAX_NODES:
+    u = queue.popleft()
+
+    if u not in adj:
+        continue
+
+    for v, w in adj[u]:
+        edges.append((u, v, w))
+
+        if v not in visited:
+            visited.add(v)
+            nodes_set.add(v)
+            queue.append(v)
+
+        if len(nodes_set) >= MAX_NODES:
             break
-        edges_raw.append(row)
 
 
-# 🔹 Step 2: collect used nodes
-used_nodes = set()
-
-for e in edges_raw:
-    used_nodes.add(int(e["src"]))
-    used_nodes.add(int(e["dst"]))
-
-
-# 🔹 Step 3: create NEW mapping (important!)
-old_to_new = {}
-new_nodes = []
+# 🔹 Build node list
+nodes = []
 
 with open(INPUT_NODES, newline='', encoding="utf-8") as f:
     reader = csv.DictReader(f)
     for row in reader:
-        old_id = int(row["node_id"])
-
-        if old_id in used_nodes:
-            new_id = len(new_nodes)
-            old_to_new[old_id] = new_id
-
-            new_nodes.append({
-                "node_id": new_id,
-                "osm_id": row["osm_id"],
-                "lat": row["lat"],
-                "lon": row["lon"]
-            })
+        nid = int(row["node_id"])
+        if nid in nodes_set:
+            nodes.append(row)
 
 
-# 🔹 Step 4: rebuild edges with NEW IDs
+# 🔹 Remap IDs
+old_to_new = {}
+new_nodes = []
+
+for i, row in enumerate(nodes):
+    old_id = int(row["node_id"])
+    old_to_new[old_id] = i
+
+    new_nodes.append({
+        "node_id": i,
+        "osm_id": row["osm_id"],
+        "lat": row["lat"],
+        "lon": row["lon"]
+    })
+
+
+# 🔹 Remap edges
 new_edges = []
 
-for e in edges_raw:
-    old_src = int(e["src"])
-    old_dst = int(e["dst"])
-
-    if old_src in old_to_new and old_dst in old_to_new:
+for u, v, w in edges:
+    if u in old_to_new and v in old_to_new:
         new_edges.append({
-            "src": old_to_new[old_src],
-            "dst": old_to_new[old_dst],
-            "weight": e["weight"]
+            "src": old_to_new[u],
+            "dst": old_to_new[v],
+            "weight": w
         })
 
 
-# 🔹 Step 5: sort edges (CRUCIAL for CSR)
-new_edges.sort(key=lambda x: int(x["src"]))
+# 🔹 Sort for CSR
+new_edges.sort(key=lambda x: x["src"])
 
 
-# 🔹 Step 6: save nodes
+# 🔹 Save
 with open(OUTPUT_NODES, "w", newline='', encoding="utf-8") as f:
     writer = csv.DictWriter(f, fieldnames=["node_id", "osm_id", "lat", "lon"])
     writer.writeheader()
     writer.writerows(new_nodes)
 
-
-# 🔹 Step 7: save edges
 with open(OUTPUT_EDGES, "w", newline='', encoding="utf-8") as f:
     writer = csv.DictWriter(f, fieldnames=["src", "dst", "weight"])
     writer.writeheader()
     writer.writerows(new_edges)
 
-
-print(f"Sample created: {len(new_nodes)} nodes, {len(new_edges)} edges")
+print(f"Connected sample: {len(new_nodes)} nodes, {len(new_edges)} edges")

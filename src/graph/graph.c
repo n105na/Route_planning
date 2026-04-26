@@ -12,7 +12,7 @@ Graph* create_graph(uint32_t n, uint32_t e) {
 
     g->num_nodes = n;
     g->num_edges = e;
-
+    g->rank = (uint32_t*)malloc(n * sizeof(uint32_t));
     g->offsets = calloc(n + 1, sizeof(uint32_t));
     g->edges = malloc(e * sizeof(uint32_t));
     g->weights = malloc(e * sizeof(double));
@@ -26,17 +26,64 @@ Graph* create_graph(uint32_t n, uint32_t e) {
     return g;
 }
 
-/**
- * Free memory
- */
+
 void free_graph(Graph* g) {
     if (!g) return;
 
+    if (g->rank) free(g->rank);
     free(g->offsets);
     free(g->edges);
     free(g->weights);
     free(g->node_coords);
     free(g);
+}
+
+// creating reverse graph :
+Graph* build_reverse_graph(const Graph* g) {
+
+    uint32_t n = g->num_nodes;
+    uint32_t e = g->num_edges;
+
+    Graph* rev = create_graph(n, e);
+
+    for (uint32_t i = 0; i < n; i++) {
+        rev->node_coords[i] = g->node_coords[i];
+    }
+
+    uint32_t* degree = calloc(n, sizeof(uint32_t));
+
+    for (uint32_t u = 0; u < n; u++) {
+        for (uint32_t i = g->offsets[u]; i < g->offsets[u + 1]; i++) {
+            degree[g->edges[i]]++;
+        }
+    }
+
+    rev->offsets[0] = 0;
+    for (uint32_t i = 0; i < n; i++) {
+        rev->offsets[i + 1] = rev->offsets[i] + degree[i];
+    }
+
+    uint32_t* temp = malloc(n * sizeof(uint32_t));
+    memcpy(temp, rev->offsets, n * sizeof(uint32_t));
+
+    for (uint32_t u = 0; u < n; u++) {
+        for (uint32_t i = g->offsets[u]; i < g->offsets[u + 1]; i++) {
+
+            uint32_t v = g->edges[i];
+            double w = g->weights[i];
+
+            uint32_t pos = temp[v]++;
+
+            rev->edges[pos] = u;
+            rev->weights[pos] = w;
+        }
+    }
+
+    free(temp);
+    free(degree);
+
+    rev->num_edges = e;
+    return rev;
 }
 
 /**

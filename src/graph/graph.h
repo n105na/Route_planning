@@ -25,14 +25,16 @@ typedef struct {
 
     // Coordonnées géographiques (pour A*)
     NodeInfo* node_coords; // Taille: num_nodes
-
+    uint32_t* rank;
 } Graph;
 
 /**
  * Création d'un graphe vide avec allocation mémoire.
  */
 Graph* create_graph(uint32_t n, uint32_t e);
+//building reverse graph 
 
+Graph* build_reverse_graph(const Graph* g);
 /**
  * Libération de toute la mémoire du graphe.
  */

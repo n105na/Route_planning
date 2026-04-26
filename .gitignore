@@ -63,5 +63,17 @@ results/figures/*
 data/processed/nodes.csv
 data/processed/edges.csv
 
+
 !data/sample/
 !data/sample/**
+
+
+
+# Python environments
+venv/
+.venv/
+env/
+ENV/
+
+# pip / numpy / packages
+site-packages/

@@ -1,0 +1,390 @@
+\documentclass[11pt]{article}
+
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage[a4paper, margin=2.5cm]{geometry}
+
+\title{\Huge Route Planning : Répondre efficacement à des requêtes de plus court chemin}
+\author{
+Zeynab SALEHI \\
+Amina BENAINI \\
+Boboc TEODORA
+}
+\date{
+Master Informatique -- Structures de données avancées \\
+Année universitaire : 2025/2026 \\
+Encadré par : M. Olivier BODINI
+}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+\vspace{2cm}
+\begin{center}
+\Large Rapport de projet
+\end{center}
+\newpage
+
+% =====================
+\section{Introduction}
+
+Dans de nombreuses applications modernes telles que les systèmes GPS, la logistique ou la cartographie, le calcul rapide d’itinéraires constitue un problème central.
+
+Sur des graphes de grande taille, les algorithmes classiques deviennent rapidement trop coûteux lorsqu’un grand nombre de requêtes doit être traité.
+
+L’objectif de ce projet est de concevoir un moteur de route planning permettant de répondre efficacement à des requêtes de plus court chemin, en comparant plusieurs approches :
+
+\begin{itemize}
+\item Dijkstra (baseline)
+\item A* (heuristique)
+\item ALT (heuristique avec landmarks)
+\item Contraction Hierarchies (CH)
+\end{itemize}
+
+L’étude porte sur les compromis entre temps de requête, mémoire et coût de prétraitement.
+
+% =====================
+\section{Données et modélisation}
+
+\subsection{Source des données}
+
+Les données sont extraites de \textbf{OpenStreetMap (OSM)}.  
+Nous avons filtré uniquement les routes (highways) afin d’obtenir un graphe pertinent pour le calcul d’itinéraires.
+
+\subsection{Modélisation}
+
+\begin{itemize}
+\item nœuds = intersections
+\item arêtes = segments de route
+\item poids = distance en mètres
+\end{itemize}
+
+\subsection{Calcul des poids}
+
+\[
+d(A,B)=2R \arcsin\left(
+\sqrt{
+\sin^2\left(\frac{\Delta\phi}{2}\right)
++
+\cos(\phi_1)\cos(\phi_2)\sin^2\left(\frac{\Delta\lambda}{2}\right)
+}
+\right)
+\]
+
+Cette formule (Haversine) permet de calculer une distance réaliste entre deux points géographiques.
+
+\subsection{Jeu de données}
+
+\begin{itemize}
+\item 100 000 nœuds
+\item 176 661 arêtes
+\item Mémoire : 4.31 MB
+\end{itemize}
+
+% =====================
+\section{Structure du graphe}
+
+\subsection{CSR}
+
+Le graphe est stocké sous forme CSR :
+
+\begin{itemize}
+\item offsets : index de début
+\item edges : voisins
+\item weights : poids
+\end{itemize}
+
+\subsection{Avantages}
+
+\begin{itemize}
+\item faible mémoire
+\item accès contigu
+\item meilleure locality cache
+\end{itemize}
+
+\subsection{Problème des identifiants}
+
+Les identifiants OSM sont non continus.
+
+\textbf{Solution :}
+remapping vers $[0,n-1]$.
+
+Cela a été essentiel pour éviter des erreurs mémoire et permettre l’utilisation du CSR.
+
+% =====================
+\section{Algorithmes}
+
+\subsection{Dijkstra}
+
+Algorithme de référence garantissant des résultats exacts.
+
+Il explore tous les chemins possibles de manière systématique en utilisant une file de priorité.  
+Cependant, il ne possède aucune heuristique, ce qui le rend lent sur de grands graphes.
+
+\subsection{A*}
+
+\[
+f(v)=g(v)+h(v)
+\]
+
+A* améliore Dijkstra en ajoutant une heuristique $h(v)$ basée sur la distance géographique.
+
+\textbf{Pourquoi ce choix ?}
+\begin{itemize}
+\item simple à implémenter
+\item admissible (ne surestime pas)
+\item efficace sur graphes routiers
+\end{itemize}
+
+Cela permet de réduire fortement le nombre de nœuds explorés.
+
+\subsection{ALT}
+
+\[
+h(v,t)=\max_{\ell \in L} |d(\ell,t)-d(\ell,v)|
+\]
+
+ALT utilise des landmarks.
+
+\textbf{Choix des landmarks :}
+\begin{itemize}
+\item sélection de 3 nœuds éloignés
+\item objectif : couvrir différentes zones du graphe
+\end{itemize}
+
+\textbf{Principe :}
+\begin{itemize}
+\item pré-calcul des distances depuis les landmarks
+\item heuristique plus informative que A*
+\end{itemize}
+
+\textbf{Limite :}
+fortement dépendant du choix des landmarks.
+
+\subsection{Contraction Hierarchies (CH)}
+
+\subsubsection{Principe}
+
+Ajouter des raccourcis pour accélérer les requêtes.
+
+\subsubsection{Ordre}
+
+\[
+rank(v)=deg(v)\times 1000 + id(v)
+\]
+
+\subsubsection{Ajout de raccourcis}
+
+\[
+d(u,w) > d(u,v)+d(v,w)
+\]
+
+\subsubsection{Witness search}
+
+Recherche limitée de type Dijkstra :
+\begin{itemize}
+\item évite le nœud intermédiaire
+\item arrêt anticipé
+\end{itemize}
+
+\subsubsection{Fonctionnement réel de notre CH}
+
+Contrairement à CH standard :
+
+\begin{itemize}
+\item les nœuds ne sont pas supprimés
+\item aucune hiérarchie stricte
+\item ajout massif de shortcuts
+\end{itemize}
+
+\subsubsection{Requête}
+
+Recherche bidirectionnelle :
+
+\begin{itemize}
+\item forward depuis la source
+\item backward depuis la cible (graphe inversé)
+\end{itemize}
+
+\[
+A \rightarrow B \rightarrow C \leftarrow D
+\]
+
+\textbf{Limites :}
+
+\begin{itemize}
+\item shortcuts redondants
+\item pas de restriction vers le haut
+\item erreurs possibles (mismatch)
+\end{itemize}
+
+% =====================
+\section{Protocole expérimental}
+
+\begin{itemize}
+\item 500 requêtes aléatoires
+\item graine fixe
+\end{itemize}
+
+\subsection{Distribution}
+
+\begin{itemize}
+\item Short : 3
+\item Medium : 27
+\item Long : 470
+\end{itemize}
+
+Majorité de requêtes longues → favorise A* et ALT.
+
+% =====================
+\section{Résultats}
+
+\subsection{Temps}
+
+\begin{center}
+\begin{tabular}{lccc}
+\hline
+Algo & Avg & p50 & p95 \\
+\hline
+Dijkstra & 17.928 & 19.187 & 24.247 \\
+A* & 9.461 & 9.151 & 20.763 \\
+ALT & 142.834 & 4.392 & 37.534 \\
+CH & 24.472 & 23.414 & 45.144 \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Débit}
+
+\begin{center}
+\begin{tabular}{lc}
+\hline
+Algo & req/s \\
+\hline
+Dijkstra & 55 \\
+A* & 105 \\
+ALT & 7 \\
+CH & 40 \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Prétraitement}
+
+\begin{center}
+\begin{tabular}{lc}
+\hline
+Algo & Temps \\
+\hline
+ALT & 23.159 ms \\
+CH & 14844.753 ms \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Mémoire}
+
+\begin{center}
+\begin{tabular}{lc}
+\hline
+Structure & Mémoire \\
+\hline
+Graphe & 4.31 MB \\
+CH & 5.53 MB \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Correction}
+
+Des mismatches sont observés pour CH.
+
+% =====================
+\section{Figures}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\linewidth]{results/figures/hist.png}
+\caption{Distribution des temps}
+\end{figure}
+
+ALT présente une forte variabilité.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\linewidth]{results/figures/avg.png}
+\caption{Temps moyen}
+\end{figure}
+
+A* est le plus efficace.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\linewidth]{results/figures/p50.png}
+\caption{Temps médian}
+\end{figure}
+
+ALT est rapide dans la majorité des cas.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\linewidth]{results/figures/p95.png}
+\caption{Cas difficiles}
+\end{figure}
+
+ALT et CH explosent sur les cas difficiles.
+
+% =====================
+\section{Analyse}
+
+A* offre le meilleur compromis.
+
+ALT est instable :
+\begin{itemize}
+\item très rapide parfois
+\item catastrophique parfois
+\end{itemize}
+
+CH :
+\begin{itemize}
+\item prétraitement énorme
+\item résultats incorrects
+\end{itemize}
+
+% =====================
+\section{Tableau de synthèse}
+
+\begin{center}
+\begin{tabular}{lcccc}
+\hline
+Critère & Dijkstra & A* & ALT & CH \\
+\hline
+Exactitude & ✔ & ✔ & ✔ & ⚠ \\
+Temps & Lent & Rapide & Variable & Moyen \\
+Prétraitement & Aucun & Aucun & Faible & Très élevé \\
+Mémoire & Faible & Faible & Moyenne & Moyenne \\
+\hline
+\end{tabular}
+\end{center}
+
+% =====================
+\section{Conclusion}
+
+A* est le meilleur compromis.
+
+ALT dépend fortement des landmarks.
+
+CH nécessite une implémentation complète.
+
+% =====================
+\section{Perspectives}
+
+\begin{itemize}
+\item implémenter CH complet
+\item améliorer landmarks
+\item tester plus grand
+\end{itemize}
+
+\end{document}
