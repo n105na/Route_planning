@@ -5,7 +5,10 @@
 \usepackage{float}
 \usepackage[a4paper, margin=2.5cm]{geometry}
 
-\title{\Huge Route Planning : Répondre efficacement à des requêtes de plus court chemin}
+\setlength{\parindent}{0pt}
+
+\title{Projet M1 --- Structures de données avancées\\[0.6cm]
+\Huge Route planning : répondre vite à des requêtes de plus court chemin}
 \author{
 Zeynab SALEHI \\
 Amina BENAINI \\
@@ -19,12 +22,38 @@ Encadré par : M. Olivier BODINI
 
 \begin{document}
 
-\maketitle
+\begin{titlepage}
 \thispagestyle{empty}
-\vspace{2cm}
 \begin{center}
-\Large Rapport de projet
+\vspace*{1.5cm}
+
+{\Large Master Informatique}\\[0.3cm]
+{\large Structures de données avancées}\\[1.8cm]
+
+{\Huge \textbf{Projet M1}}\\[0.6cm]
+{\Large Rapport de projet}\\[1.8cm]
+
+{\LARGE \textbf{Route planning :}}\\[0.3cm]
+{\LARGE \textbf{répondre vite à des requêtes de plus court chemin}}\\[2.8cm]
+
+\rule{0.8\linewidth}{0.6pt}\\[1.2cm]
+
+{\large \textbf{Réalisé par}}\\[0.5cm]
+{\Large Zeynab SALEHI}\\[0.25cm]
+{\Large Amina BENAINI}\\[0.25cm]
+{\Large Boboc TEODORA}\\[2cm]
+
+\rule{0.8\linewidth}{0.6pt}\\[1.5cm]
+
+{\large Encadré par : M. Olivier BODINI}\\[0.4cm]
+{\large Année universitaire : 2025/2026}
+
+\vfill
 \end{center}
+\end{titlepage}
+
+\tableofcontents
+\thispagestyle{empty}
 \newpage
 
 % =====================
@@ -243,6 +272,8 @@ Majorité de requêtes longues → favorise A* et ALT.
 
 \subsection{Temps}
 
+{\large
+\renewcommand{\arraystretch}{1.2}
 \begin{center}
 \begin{tabular}{lccc}
 \hline
@@ -255,9 +286,12 @@ CH & 24.472 & 23.414 & 45.144 \\
 \hline
 \end{tabular}
 \end{center}
+}
 
 \subsection{Débit}
 
+{\large
+\renewcommand{\arraystretch}{1.2}
 \begin{center}
 \begin{tabular}{lc}
 \hline
@@ -270,9 +304,12 @@ CH & 40 \\
 \hline
 \end{tabular}
 \end{center}
+}
 
 \subsection{Prétraitement}
 
+{\large
+\renewcommand{\arraystretch}{1.2}
 \begin{center}
 \begin{tabular}{lc}
 \hline
@@ -283,9 +320,12 @@ CH & 14844.753 ms \\
 \hline
 \end{tabular}
 \end{center}
+}
 
 \subsection{Mémoire}
 
+{\large
+\renewcommand{\arraystretch}{1.2}
 \begin{center}
 \begin{tabular}{lc}
 \hline
@@ -296,6 +336,7 @@ CH & 5.53 MB \\
 \hline
 \end{tabular}
 \end{center}
+}
 
 \subsection{Correction}
 
@@ -356,18 +397,21 @@ CH :
 % =====================
 \section{Tableau de synthèse}
 
+{\large
+\renewcommand{\arraystretch}{1.2}
 \begin{center}
 \begin{tabular}{lcccc}
 \hline
 Critère & Dijkstra & A* & ALT & CH \\
 \hline
-Exactitude & ✔ & ✔ & ✔ & ⚠ \\
+Exactitude & Oui & Oui & Oui & À corriger \\
 Temps & Lent & Rapide & Variable & Moyen \\
 Prétraitement & Aucun & Aucun & Faible & Très élevé \\
 Mémoire & Faible & Faible & Moyenne & Moyenne \\
 \hline
 \end{tabular}
 \end{center}
+}
 
 % =====================
 \section{Conclusion}
