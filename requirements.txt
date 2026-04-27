@@ -1,2 +1,7 @@
 # Only needed for preprocessing (not main project)
 osmium>=4.0.0
+
+numpy
+matplotlib
+osmium
+panda

@@ -6,7 +6,23 @@
 Cette section décrit précisément comment reconstruire le projet depuis zéro, depuis les données brutes jusqu’aux figures finales.
 
 ---
+### Étape 0 — Installer les dépendances
+Créer un environnement virtuel (recommandé) :
+```
+python3 -m venv venv
+source venv/bin/activate
+```
 
+Installer les dépendances Python :
+```
+pip install -r requirements.txt
+```
+
+Les principales bibliothèques utilisées sont :
+
+* `numpy` → traitement des données
+* `matplotlib` → génération des figures
+* `osmium` → extraction des données OpenStreetMap
 ### Étape 1 — Télécharger les données OpenStreetMap
 
 Télécharger l’extrait Île-de-France :
@@ -41,7 +57,7 @@ Ce script :
 * calcule les poids avec la formule de Haversine :
 
 ```
-d = 2R * asin( sqrt(...) )
+d = 2R * \arcsin( sqrt(...) )
 ```
 
 * génère deux fichiers :
@@ -112,7 +128,7 @@ Compilation des modules :
 ```
 
 Le benchmark :
-
+* Le fichier CSV est généré automatiquement pendant le benchmark et contient les résultats par requête.
 * génère 500 requêtes aléatoires `(s, t)`
 * utilise une graine fixe (`srand(42)`) → reproductibilité
 * classe les requêtes :
@@ -151,7 +167,7 @@ results/csv/results.csv
 ```bash
 python scripts/generate_plots.py
 ```
-
+Les valeurs correspondant à des distances infinies (graphes non connectés) sont ignorées pour garantir des statistiques fiables. 
 Ce script :
 
 1. charge le fichier CSV
