@@ -59,38 +59,45 @@ Encadré par : M. Olivier BODINI
 % =====================
 \section{Introduction}
 
-Dans de nombreuses applications modernes telles que les systèmes GPS, la logistique ou la cartographie, le calcul rapide d’itinéraires constitue un problème central.
+Dans le cadre des systèmes de transport modernes et des services de géolocalisation (GPS), le calcul d'itinéraires en temps réel représente un défi algorithmique majeur. Avec l'augmentation constante de la taille des réseaux routiers numériques, comme ceux fournis par OpenStreetMap, les méthodes classiques de recherche de chemin, telles que l'algorithme de Dijkstra, atteignent rapidement leurs limites de performance lors du traitement de volumes massifs de requêtes.
 
-Sur des graphes de grande taille, les algorithmes classiques deviennent rapidement trop coûteux lorsqu’un grand nombre de requêtes doit être traité.
-
-L’objectif de ce projet est de concevoir un moteur de route planning permettant de répondre efficacement à des requêtes de plus court chemin, en comparant plusieurs approches :
+L'objectif principal de ce projet est de concevoir et d'implémenter un moteur de planification d'itinéraire de haute performance. Au-delà de la simple exécution d'algorithmes, cette étude se concentre sur l'analyse comparative de plusieurs stratégies d'accélération :
 
 \begin{itemize}
-\item Dijkstra (baseline)
-\item A* (heuristique)
-\item ALT (heuristique avec landmarks)
-\item Contraction Hierarchies (CH)
+\item \textbf{Dijkstra (Baseline)} : établir une référence de correction et de performance
+\item \textbf{A* (Heuristique)} : réduire l'espace de recherche via des estimations géographiques
+\item \textbf{ALT (Landmarks)} : exploiter des points de repère pré-calculés
+\item \textbf{Contraction Hierarchies (CH)} : viser une accélération importante grâce à un prétraitement du graphe
 \end{itemize}
 
-L’étude porte sur les compromis entre temps de requête, mémoire et coût de prétraitement.
+L'originalité de notre approche réside également dans l'optimisation de la couche logicielle. Un accent particulier est mis sur la gestion de la mémoire via la structure \textbf{CSR (Compressed Sparse Row)}, afin de maximiser la localité cache et de minimiser l'empreinte mémoire sur des graphes de grande taille.
+
+Enfin, cette étude vise à quantifier les compromis (\textit{trade-offs}) entre le temps de prétraitement, la consommation mémoire et l'efficacité des requêtes.
 
 % =====================
 \section{Données et modélisation}
 
 \subsection{Source des données}
 
-Les données sont extraites de \textbf{OpenStreetMap (OSM)}.  
-Nous avons filtré uniquement les routes (highways) afin d’obtenir un graphe pertinent pour le calcul d’itinéraires.
+Les données utilisées dans ce projet proviennent de \textbf{OpenStreetMap (OSM)}, une base de données géographique libre et collaborative.
 
-\subsection{Modélisation}
+Afin de construire un graphe pertinent pour le calcul d’itinéraires routiers, un filtrage a été appliqué pour ne conserver que les axes routiers principaux (\textit{highways}). Ce choix permet d’éliminer les chemins non pertinents pour la navigation automobile (zones piétonnes, pistes cyclables, etc.).
+
+Le fichier brut au format \texttt{.osm.pbf} a ensuite été transformé en un format structuré (\texttt{CSV}) afin de permettre une lecture efficace dans notre implémentation en langage C.
+
+\subsection{Modélisation du réseau}
+
+Le réseau routier est modélisé sous la forme d’un graphe orienté pondéré $G = (V, E)$ :
 
 \begin{itemize}
-\item nœuds = intersections
-\item arêtes = segments de route
-\item poids = distance en mètres
+\item \textbf{Nœuds ($V$)} : représentent les intersections routières. Chaque nœud possède un identifiant unique ainsi que des coordonnées géographiques (latitude, longitude).
+\item \textbf{Arêtes ($E$)} : représentent les segments de route reliant deux intersections. Le caractère orienté permet de modéliser les routes à sens unique.
+\item \textbf{Poids ($w$)} : représentent la distance physique entre deux nœuds, exprimée en mètres.
 \end{itemize}
 
-\subsection{Calcul des poids}
+\subsection{Calcul des distances (Haversine)}
+
+Le poids des arêtes est calculé à l’aide de la formule de Haversine :
 
 \[
 d(A,B)=2R \arcsin\left(
@@ -102,46 +109,77 @@ d(A,B)=2R \arcsin\left(
 \right)
 \]
 
-Cette formule (Haversine) permet de calculer une distance réaliste entre deux points géographiques.
+où $\phi$ représente la latitude, $\lambda$ la longitude, et $R$ le rayon de la Terre (environ 6371 km).
 
-\subsection{Jeu de données}
+Contrairement à une distance euclidienne, cette formule prend en compte la courbure terrestre et permet d’obtenir une estimation réaliste des distances routières.
+
+Cette distance est également utilisée comme heuristique dans l’algorithme A*.
+
+\subsection{Statistiques du jeu de données}
+
+Le graphe utilisé pour les expérimentations présente les caractéristiques suivantes :
 
 \begin{itemize}
-\item 100 000 nœuds
-\item 176 661 arêtes
-\item Mémoire : 4.31 MB
+\item Nombre de nœuds : 100\,000
+\item Nombre d’arêtes : 176\,661
+\item Empreinte mémoire : 4.31 MB
 \end{itemize}
 
+Ce ratio d’environ 1.7 arêtes par nœud est représentatif d’un réseau routier réel.
+
+\subsection{Génération des requêtes}
+
+Un ensemble de 500 requêtes $(s,t)$ a été généré aléatoirement afin d’évaluer les performances des algorithmes.
+
+Une graine fixe (\texttt{srand(42)}) est utilisée pour garantir la reproductibilité des résultats.
+
+Les requêtes couvrent différentes distances (courtes, moyennes et longues), ce qui permet d’évaluer le comportement des algorithmes dans des scénarios variés.
 % =====================
 \section{Structure du graphe}
 
-\subsection{CSR}
+\subsection{Représentation CSR (Compressed Sparse Row)}
 
-Le graphe est stocké sous forme CSR :
+Afin d’optimiser les performances mémoire et temporelles, le graphe est stocké sous forme CSR.
 
-\begin{itemize}
-\item offsets : index de début
-\item edges : voisins
-\item weights : poids
-\end{itemize}
-
-\subsection{Avantages}
+Cette structure repose sur trois tableaux contigus :
 
 \begin{itemize}
-\item faible mémoire
-\item accès contigu
-\item meilleure locality cache
+\item \textbf{offsets} : indique, pour chaque nœud, la position de début de ses voisins dans le tableau edges
+\item \textbf{edges} : contient les identifiants des voisins
+\item \textbf{weights} : contient le poids associé à chaque arête
 \end{itemize}
+
+Cette représentation permet un accès rapide et séquentiel aux voisins d’un nœud.
+
+\subsection{Optimisation des performances}
+
+L’utilisation du CSR apporte plusieurs avantages majeurs :
+
+\begin{itemize}
+\item \textbf{Réduction de la mémoire} : absence de pointeurs → structure compacte
+\item \textbf{Localité cache} : accès contigu → meilleure utilisation du cache CPU
+\item \textbf{Performance} : accélération des phases de relaxation dans Dijkstra, A* et CH
+\end{itemize}
+
+Ces propriétés sont particulièrement importantes pour les graphes de grande taille.
 
 \subsection{Problème des identifiants}
 
-Les identifiants OSM sont non continus.
+Les identifiants issus d’OpenStreetMap ne sont pas continus et peuvent être très grands.
+
+\textbf{Problème :}
+\begin{itemize}
+\item impossible d’indexer directement les tableaux
+\item risque d’erreurs mémoire (segmentation fault)
+\item gaspillage mémoire important
+\end{itemize}
 
 \textbf{Solution :}
-remapping vers $[0,n-1]$.
+\begin{itemize}
+\item remapping des identifiants vers un intervalle $[0, n-1]$
+\end{itemize}
 
-Cela a été essentiel pour éviter des erreurs mémoire et permettre l’utilisation du CSR.
-
+Cette étape est essentielle pour permettre une utilisation correcte du format CSR et garantir des accès directs efficaces.
 % =====================
 \section{Algorithmes}
 
@@ -267,6 +305,16 @@ A \rightarrow B \rightarrow C \leftarrow D
 
 Majorité de requêtes longues → favorise A* et ALT.
 
+\medskip
+
+Sur les 500 requêtes générées, 55 correspondent à des paires de nœuds non connectées, soit environ 11\% des cas.  
+Ces requêtes retournent une distance infinie (absence de chemin entre la source et la destination).
+
+\medskip
+
+Afin de distinguer les effets liés à la structure du graphe de ceux liés aux performances des algorithmes, ces cas sont conservés dans les résultats bruts mais exclus de l’analyse des performances et des figures.
+
+
 % =====================
 \section{Résultats}
 
@@ -345,6 +393,8 @@ Des mismatches sont observés pour CH.
 % =====================
 \section{Figures}
 
+Les figures présentées ci-dessous sont basées sur des données filtrées, excluant les requêtes non connectées ainsi que les valeurs extrêmes. 
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.8\linewidth]{results/figures/hist.png}
@@ -416,19 +466,22 @@ Mémoire & Faible & Faible & Moyenne & Moyenne \\
 % =====================
 \section{Conclusion}
 
-A* est le meilleur compromis.
+Cette étude nous a permis de quantifier l'efficacité des différentes stratégies d'accélération pour le calcul d'itinéraires sur un graphe routier réel. Nos expérimentations confirment que l'optimisation d'un moteur de recherche ne repose pas uniquement sur l'algorithme choisi, mais également sur une synergie étroite avec la structure de données sous-jacente.
 
-ALT dépend fortement des landmarks.
-
-CH nécessite une implémentation complète.
-
-% =====================
-\section{Perspectives}
+Les résultats de nos benchmarks mènent aux conclusions suivantes :
 
 \begin{itemize}
-\item implémenter CH complet
-\item améliorer landmarks
-\item tester plus grand
+
+\item \textbf{A* constitue le meilleur compromis :}  
+Bien qu'il ne soit pas théoriquement le plus rapide, il offre des performances stables, sans coût mémoire supplémentaire ni phase de prétraitement. Il s'agit ainsi de la solution la plus robuste dans un contexte pratique.
+
+\item \textbf{ALT dépend fortement de la sélection des landmarks :}  
+L'efficacité de cet algorithme s'est révélée très variable. Une mauvaise sélection des points de repère peut dégrader fortement les performances, tandis qu'une sélection pertinente nécessite un prétraitement et un stockage mémoire supplémentaires.
+
+\item \textbf{CH nécessite une implémentation complète et rigoureuse :}  
+Bien que cette approche soit théoriquement la plus performante pour les longues distances, son efficacité dépend fortement de la qualité du prétraitement (notamment le witness search) et de la gestion des raccourcis. Dans notre implémentation simplifiée, ces limitations entraînent des performances inférieures et des erreurs de calcul.
+
 \end{itemize}
 
+De manière générale, ce projet met en évidence l'importance des compromis entre complexité algorithmique, coût mémoire et performance réelle, en particulier dans le cadre de graphes de grande taille issus de données réelles.
 \end{document}
