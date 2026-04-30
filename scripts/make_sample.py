@@ -10,7 +10,7 @@ OUTPUT_EDGES = "data/sample/edges_small.csv"
 MAX_NODES = 100000
 
 
-# 🔹 Load edges into adjacency list
+# Chargement des arêtes en liste d'adjacence
 adj = {}
 
 with open(INPUT_EDGES, newline='', encoding="utf-8") as f:
@@ -26,7 +26,7 @@ with open(INPUT_EDGES, newline='', encoding="utf-8") as f:
         adj[u].append((v, w))
 
 
-# 🔹 BFS to keep graph connected
+# BFS pour garantir la connexité du sous-graphe
 visited = set()
 queue = deque([0])   # start from node 0
 
@@ -51,7 +51,7 @@ while queue and len(nodes_set) < MAX_NODES:
             break
 
 
-# 🔹 Build node list
+# Construction de la liste des nœuds sélectionnés
 nodes = []
 
 with open(INPUT_NODES, newline='', encoding="utf-8") as f:
@@ -62,7 +62,7 @@ with open(INPUT_NODES, newline='', encoding="utf-8") as f:
             nodes.append(row)
 
 
-# 🔹 Remap IDs
+# Réindexation des identifiants
 old_to_new = {}
 new_nodes = []
 
@@ -78,7 +78,7 @@ for i, row in enumerate(nodes):
     })
 
 
-# 🔹 Remap edges
+# Mise à jour des arêtes avec les nouveaux IDs
 new_edges = []
 
 for u, v, w in edges:
@@ -90,11 +90,11 @@ for u, v, w in edges:
         })
 
 
-# 🔹 Sort for CSR
+# Tri final pour le format CSR
 new_edges.sort(key=lambda x: x["src"])
 
 
-# 🔹 Save
+# Exportation des fichiers CSV
 with open(OUTPUT_NODES, "w", newline='', encoding="utf-8") as f:
     writer = csv.DictWriter(f, fieldnames=["node_id", "osm_id", "lat", "lon"])
     writer.writeheader()
