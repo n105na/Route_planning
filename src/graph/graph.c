@@ -103,11 +103,11 @@ Graph* load_from_csv(const char* nodes_path, const char* edges_path) {
     char line[1024];
     uint32_t n = 0, e = 0;
 
-    // 🔹 count nodes
+    // count nodes
     fgets(line, sizeof(line), f_nodes);
     while (fgets(line, sizeof(line), f_nodes)) n++;
 
-    // 🔹 count edges
+    // count edges
     fgets(line, sizeof(line), f_edges);
     while (fgets(line, sizeof(line), f_edges)) e++;
 
@@ -118,7 +118,7 @@ Graph* load_from_csv(const char* nodes_path, const char* edges_path) {
         return NULL;
     }
 
-    // 🔹 load nodes
+    // load nodes
     rewind(f_nodes);
     fgets(line, sizeof(line), f_nodes);
 
@@ -134,7 +134,7 @@ Graph* load_from_csv(const char* nodes_path, const char* edges_path) {
         }
     }
 
-    // 🔹 temp edge structure
+    // temp edge structure
     typedef struct {
         uint32_t src, dst;
         double w;
@@ -148,7 +148,7 @@ Graph* load_from_csv(const char* nodes_path, const char* edges_path) {
         return NULL;
     }
 
-    // 🔹 load edges
+    // load edges
     rewind(f_edges);
     fgets(line, sizeof(line), f_edges);
 
@@ -165,23 +165,23 @@ Graph* load_from_csv(const char* nodes_path, const char* edges_path) {
         }
     }
 
-    // 🔹 degree array
+    // degree array
     uint32_t* degree = calloc(n, sizeof(uint32_t));
     for (uint32_t i = 0; i < valid_edges; i++) {
         degree[edges_tmp[i].src]++;
     }
 
-    // 🔹 build offsets (prefix sum)
+    // build offsets (prefix sum)
     g->offsets[0] = 0;
     for (uint32_t i = 0; i < n; i++) {
         g->offsets[i + 1] = g->offsets[i] + degree[i];
     }
 
-    // 🔹 temp positions (copy offsets)
+    // temp positions (copy offsets)
     uint32_t* temp = malloc(n * sizeof(uint32_t));
     memcpy(temp, g->offsets, n * sizeof(uint32_t));
 
-    // 🔹 fill edges + weights
+    // fill edges + weights
     for (uint32_t i = 0; i < valid_edges; i++) {
         uint32_t src = edges_tmp[i].src;
         uint32_t pos = temp[src];
@@ -192,7 +192,7 @@ Graph* load_from_csv(const char* nodes_path, const char* edges_path) {
         temp[src]++;
     }
 
-    // 🔹 cleanup
+    // cleanup
     free(temp);
     free(degree);
     free(edges_tmp);
