@@ -32,9 +32,10 @@ typedef struct {
  * Création d'un graphe vide avec allocation mémoire.
  */
 Graph* create_graph(uint32_t n, uint32_t e);
-//building reverse graph 
 
+//building reverse graph(CH ou ALT)
 Graph* build_reverse_graph(const Graph* g);
+
 /**
  * Libération de toute la mémoire du graphe.
  */
